@@ -1,9 +1,18 @@
 
+import os
+
 import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 
+def find_python_files(folder_path):
+    python_files = []
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            if file.endswith(".py"):
+                python_files.append(os.path.join(root, file))
+    return python_files
 
 class Owner(commands.Cog, name="owner"):
     def __init__(self, bot) -> None:
@@ -135,6 +144,17 @@ class Owner(commands.Cog, name="owner"):
             description=f"Successfully unloaded the `{cog}` cog.", color=0xBEBEFE
         )
         await context.response.send_message(embed=embed)
+        
+    async def reload_python_files(self, bot):
+        script_directory = os.path.dirname(os.path.realpath(__file__))
+        py_files = find_python_files(script_directory)
+        for file in py_files:
+            file = os.path.splitext(file)[0]  # Remove the ".py" extension
+            file = os.path.relpath(file, script_directory).replace(os.sep, ".")  # Convert path to module notation
+            try:
+                await bot.reload_extension(f"cogs.{file}")
+            except Exception as e:
+                print(f"Failed to reload extension {file}: {e}")
 
     @app_commands.command(
         name="reload",
@@ -142,7 +162,7 @@ class Owner(commands.Cog, name="owner"):
     )
     @app_commands.describe(cog="The name of the cog to reload")
     @commands.is_owner()
-    async def reload(self, context: discord.Interaction, cog: str) -> None:
+    async def reload(self, context: discord.Interaction, *, cog: str = None) -> None:
         """
         The bot will reload the given cog.
 
@@ -150,7 +170,11 @@ class Owner(commands.Cog, name="owner"):
         :param cog: The name of the cog to reload.
         """
         try:
-            await self.bot.reload_extension(f"cogs.{cog}")
+            if cog == None:
+                await self.reload_python_files(self.bot)
+                cog = "All"
+            else:
+                await self.bot.reload_extension(f"cogs.{cog}")
         except Exception:
             embed = discord.Embed(
                 description=f"Could not reload the `{cog}` cog.", color=0xE02B2B
