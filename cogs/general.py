@@ -127,26 +127,35 @@ class General(commands.Cog, name="general"):
         :param context: The hybrid command context.
         :param member: Select a member you want to get info from.
         """
-
         if member == None:
             member = context.user
             roles = []
             for role in context.user.roles:
-                roles.append(f'<@&{role.id}>')
+                if role.name != "@everyone":
+                    roles.append(f'<@&{role.id}>')
             roles = ", ".join(roles)
         else:
             roles = []
             for role in member.roles:
-                roles.append(f'<@&{role.id}>')
+                if role.name != "@everyone":
+                    roles.append(f'<@&{role.id}>')
             roles = ", ".join(roles)
+            
+        if not member.avatar:
+            newavatar = "https://ia800305.us.archive.org/31/items/discordprofilepictures/discordgreen.png"
+        else:
+            newavatar = member.avatar.url
+            
+        embed = discord.Embed(color=0xBEBEFE)
+        embed.set_author(
+            name=member.name,
+            icon_url=newavatar,
+            url=f"https://discord.com/users/{member.id}"
+            )
         
-        embed = discord.Embed(
-            title=f"@{member.name}", color=0xBEBEFE, url=f"https://discord.com/users/{member.id}"
-        )
-        if member.avatar is not None:
-            embed.set_thumbnail(url=member.avatar.url)
+        embed.set_thumbnail(url=newavatar)
         embed.add_field(name="User Info", value=f"```UID: {member.id}\nName: {member.name}\nNickname: {member.nick}```")
-        embed.add_field(name=f"Roles ({len(member.roles)})", value=roles)
+        embed.add_field(name=f"Roles ({len(member.roles)-1})", value=roles)
         embed.set_footer(text=f"Created at: {context.guild.created_at}")
         await context.response.send_message(embed=embed)
     
@@ -162,7 +171,8 @@ class General(commands.Cog, name="general"):
         """
         roles = []
         for role in context.guild.roles:
-            roles.append(f"<@&{role.id}>")
+            if role.name != "@everyone":
+                roles.append(f"<@&{role.id}>")
         roles = ", ".join(roles)
 
         embed = discord.Embed(
@@ -175,7 +185,7 @@ class General(commands.Cog, name="general"):
         embed.add_field(
             name="Text/Voice Channels", value=f"{len(context.guild.channels)}"
         )
-        embed.add_field(name=f"Roles ({len(context.guild.roles)})", value=roles)
+        embed.add_field(name=f"Roles ({len(context.guild.roles)-1})", value=roles)
         embed.set_footer(text=f"Created at: {context.guild.created_at}")
         await context.response.send_message(embed=embed)
 
