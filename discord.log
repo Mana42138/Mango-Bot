@@ -1,0 +1,13 @@
+[2024-05-30 22:54:20] [INFO    ] discord_bot: -------------------
+[2024-05-30 22:54:20] [INFO    ] discord_bot: Logged in as Mango
+[2024-05-30 22:54:20] [INFO    ] discord_bot: discord.py API version: 2.3.2
+[2024-05-30 22:54:20] [INFO    ] discord_bot: Python version: 3.12.3
+[2024-05-30 22:54:20] [INFO    ] discord_bot: Running on: Windows 11 (nt)
+[2024-05-30 22:54:20] [INFO    ] discord_bot: -------------------
+[2024-05-30 22:54:20] [INFO    ] discord_bot: Loaded extension 'fun'
+[2024-05-30 22:54:20] [INFO    ] discord_bot: Loaded extension 'general'
+[2024-05-30 22:54:20] [INFO    ] discord_bot: Loaded extension 'mod'
+[2024-05-30 22:54:20] [INFO    ] discord_bot: Loaded extension 'owner'
+[2024-05-30 22:54:20] [INFO    ] discord_bot: Loaded extension 'reminders'
+[2024-05-30 22:54:21] [INFO    ] discord_bot: Synced 24 command(s)
+[2024-05-30 22:54:21] [INFO    ] discord_bot: -------------------
