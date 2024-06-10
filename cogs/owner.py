@@ -1,22 +1,17 @@
 
 import os
-<<<<<<< HEAD
 import json
 from turtle import title
 from types import NoneType
 from .modules.DataScrambler import *
 from .modules.Obfuscation import *
 
-=======
->>>>>>> bdf44a422fd86de28a65bdd6d78bf3ef0786cb47
 
 import discord
 from discord import app_commands, file
 from discord.ext import commands
 from discord.ext.commands import Context
 
-<<<<<<< HEAD
-=======
 def find_python_files(folder_path):
     python_files = []
     for root, dirs, files in os.walk(folder_path):
@@ -25,7 +20,6 @@ def find_python_files(folder_path):
                 python_files.append(os.path.join(root, file))
     return python_files
 
->>>>>>> bdf44a422fd86de28a65bdd6d78bf3ef0786cb47
 class Owner(commands.Cog, name="owner"):
     def __init__(self, bot) -> None:
         self.bot = bot
@@ -161,14 +155,11 @@ class Owner(commands.Cog, name="owner"):
         script_directory = os.path.dirname(os.path.realpath(__file__))
         py_files = find_python_files(script_directory)
         for file in py_files:
-<<<<<<< HEAD
             if file.endswith(".py"):
-                file = os.path.splitext(file)[0]  # Remove the ".py" extension
-                file = os.path.relpath(file, script_directory).replace(os.sep, ".")  # Convert path to module notation
-=======
-            file = os.path.splitext(file)[0]  # Remove the ".py" extension
-            file = os.path.relpath(file, script_directory).replace(os.sep, ".")  # Convert path to module notation
->>>>>>> bdf44a422fd86de28a65bdd6d78bf3ef0786cb47
+                file = os.path.splitext(file)[0]
+                file = os.path.relpath(file, script_directory).replace(os.sep, ".")
+            file = os.path.splitext(file)[0]
+            file = os.path.relpath(file, script_directory).replace(os.sep, ".")
             try:
                 await bot.reload_extension(f"cogs.{file}")
             except Exception as e:
@@ -274,21 +265,17 @@ class Owner(commands.Cog, name="owner"):
         file_path = os.path.join(parent_dir, "database", "database.json")
         
         try:
-            # Try to load existing data
             with open(file_path, "r") as file:
                 data = json.load(file)
         except FileNotFoundError:
-            # If file doesn't exist, initialize an empty data structure
             data = {}
 
         try:
-            # Update or add data for the current guild
             guild_id = str(context.guild.id)
             guild_data = data.get(guild_id, {})
             guild_data["Name"] = name or ""
             data[guild_id] = guild_data
-            
-            # Write back to the file
+
             with open(file_path, "w") as file:
                 json.dump(data, file, indent=4)
         except Exception as e:
@@ -318,11 +305,9 @@ class Owner(commands.Cog, name="owner"):
 
         embed = discord.Embed(description=f"Testing Obfuscation", color=0xBEBEFE)
         await context.response.send_message(file=obfuscated_file)
-        
-        # Close the file object
+
         obfuscated_file.close()
 
-        # Delete the file after sending
         os.remove(obfuscated_file.fp.name)
         
     @app_commands.command(
@@ -347,10 +332,8 @@ class Owner(commands.Cog, name="owner"):
         embed = discord.Embed(description=f"Still in experimental phase", color=0xBEBEFE)
         await context.response.send_message(embed=embed, file=obfuscated_file)
         
-        # Close the file object
         obfuscated_file.close()
 
-        # Delete the file after sending
         os.remove(obfuscated_file.fp.name)
 
 async def setup(bot):
