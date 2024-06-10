@@ -21,7 +21,6 @@ class General(commands.Cog, name="general"):
         )
         # self.bot.tree.add_command(self.context_menu_message)
 
-    # Message context menu command
     async def remove_spoilers(
         self, interaction: discord.Interaction, message: discord.Message
     ) -> None:
@@ -45,7 +44,6 @@ class General(commands.Cog, name="general"):
             embed.set_image(url=attachment.url)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    # User context menu command
     async def grab_id(
         self, interaction: discord.Interaction, user: discord.User
     ) -> None:
@@ -286,7 +284,7 @@ class General(commands.Cog, name="general"):
                 if request.status == 200:
                     data = await request.json(
                         content_type="application/javascript"
-                    )  # For some reason the returned content is of type JavaScript
+                    )
                     embed = discord.Embed(
                         title="Bitcoin price",
                         description=f"The current price is {data['bpi']['USD']['rate']} :dollar:",
