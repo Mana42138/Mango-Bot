@@ -6,9 +6,9 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 
+# Check if it is a private DM
 async def check_private(context: discord.Interaction):
     try:
-        # Detect if command is being executed in private channel
         if not context.guild:
             embed = discord.Embed(title="Error", description=f"This command must be executed in a guild!", color=0xE74C3C)
             await context.response.send_message(embed=embed, ephemeral=True)
