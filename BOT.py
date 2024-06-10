@@ -5,6 +5,7 @@ import os
 import platform
 import random
 import sys
+import threading
 
 import aiosqlite
 import discord
@@ -15,11 +16,30 @@ from dotenv import load_dotenv
 
 from database import DatabaseManager
 
+file_path = os.path.join(os.path.realpath(os.path.dirname(__file__)), "database", "bot_version.json")
+
+with open(file_path, "r") as file:
+    version = json.load(file)
+
+version["Version"] = int(version["Version"]) + 1
+
+version["Version"] = str(version["Version"])
+
+new_version = version["Version"]
+
+with open(file_path, "w") as file:
+    json.dump(version, file, indent=4)
+
+
+#fom API.api import main
+
 if not os.path.isfile(f"{os.path.realpath(os.path.dirname(__file__))}/config.json"):
     sys.exit("'config.json' not found! Please add it and try again.")
 else:
     with open(f"{os.path.realpath(os.path.dirname(__file__))}/config.json") as file:
         config = json.load(file)
+        
+print(os.path.realpath(os.path.dirname(__file__)))
 
 # bot = commands.Bot(command_prefix=config["prefix"], intents=discord.Intents.default(), help_command=False)
 
@@ -149,13 +169,26 @@ class DiscordBot(commands.Bot):
                 await db.executescript(file.read())
             await db.commit()
 
+
+
     async def load_cogs(self) -> None:
         """
         The code in this function is executed whenever the bot will start.
         """
-        for file in os.listdir(f"{os.path.realpath(os.path.dirname(__file__))}/cogs"):
+        cogs_dir = os.path.join(os.path.realpath(os.path.dirname(__file__)), "cogs")
+        if not os.path.exists(cogs_dir):
+            self.logger.error("Cogs directory not found.")
+            return
+    
+        for file in os.listdir(cogs_dir):
+            file_path = os.path.join(cogs_dir, file)
+            if os.path.isdir(file_path):
+                # Skip folders
+                continue
+            
             if file.endswith(".py"):
                 extension = file[:-3]
+                print(extension)
                 try:
                     await self.load_extension(f"cogs.{extension}")
                     self.logger.info(f"Loaded extension '{extension}'")
@@ -164,7 +197,7 @@ class DiscordBot(commands.Bot):
                     self.logger.error(
                         f"Failed to load extension {extension}\n{exception}"
                     )
-
+                
     @tasks.loop(minutes=1.0)
     async def status_task(self) -> None:
         """
@@ -191,6 +224,7 @@ class DiscordBot(commands.Bot):
         self.logger.info(
             f"Running on: {platform.system()} {platform.release()} ({os.name})"
         )
+        self.logger.info(f"Bot Version: v.{version}")
         self.logger.info("-------------------")
         await self.init_db()
         await self.load_cogs()
@@ -239,7 +273,7 @@ class DiscordBot(commands.Bot):
         :param context: The context of the normal command that failed executing.
         :param error: The error that has been faced.
         """
-        if isinstance(error, commands.CommandOnCooldown):
+        if isinstance(error, app_commands.CommandOnCooldown):
             minutes, seconds = divmod(error.retry_after, 60)
             hours, minutes = divmod(minutes, 60)
             hours = hours % 24
@@ -248,20 +282,7 @@ class DiscordBot(commands.Bot):
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
-        elif isinstance(error, commands.NotOwner):
-            embed = discord.Embed(
-                description="You are not the owner of the bot!", color=0xE02B2B
-            )
-            await context.send(embed=embed)
-            if context.guild:
-                self.logger.warning(
-                    f"{context.author} (ID: {context.author.id}) tried to execute an owner only command in the guild {context.guild.name} (ID: {context.guild.id}), but the user is not an owner of the bot."
-                )
-            else:
-                self.logger.warning(
-                    f"{context.author} (ID: {context.author.id}) tried to execute an owner only command in the bot's DMs, but the user is not an owner of the bot."
-                )
-        elif isinstance(error, commands.MissingPermissions):
+        elif isinstance(error, app_commands.MissingPermissions):
             embed = discord.Embed(
                 description="You are missing the permission(s) `"
                 + ", ".join(error.missing_permissions)
@@ -269,7 +290,7 @@ class DiscordBot(commands.Bot):
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
-        elif isinstance(error, commands.BotMissingPermissions):
+        elif isinstance(error, app_commands.BotMissingPermissions):
             embed = discord.Embed(
                 description="I am missing the permission(s) `"
                 + ", ".join(error.missing_permissions)
@@ -277,7 +298,7 @@ class DiscordBot(commands.Bot):
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
-        elif isinstance(error, commands.MissingRequiredArgument):
+        elif isinstance(error, app_commands.Argument):
             embed = discord.Embed(
                 title="Error!",
                 # We need to capitalize because the command arguments have no capital letter in the code and they are the first word in the error message.
@@ -289,7 +310,9 @@ class DiscordBot(commands.Bot):
             raise error
 
 
+
 load_dotenv()
+
 
 bot = DiscordBot()
 bot.run(os.getenv("TOKEN"))
