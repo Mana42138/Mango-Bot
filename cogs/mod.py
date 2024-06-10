@@ -1,10 +1,3 @@
-""""
-Copyright © Krypton 2019-2023 - https://github.com/kkrypt0nn (https://krypton.ninja)
-Description:
-🐍 A simple template to start to code your own and personalized discord bot in Python programming language.
-
-Version: 6.1.0
-"""
 
 import os
 from datetime import datetime
@@ -60,7 +53,6 @@ class Moderation(commands.Cog, name="moderation"):
                         f"You were kicked by **{context.user}** from **{context.guild.name}**!\nReason: {reason}"
                     )
                 except:
-                    # Couldn't send a message in the private messages of the user
                     pass
                 await member.kick(reason=reason)
             except:
@@ -289,7 +281,7 @@ class Moderation(commands.Cog, name="moderation"):
         """
         await context.response.send_message(
             "Deleting messages..."
-        )  # Bit of a hacky way to make sure the bot responds to the interaction and doens't get a "Unknown Interaction" response
+        )
         purged_messages = await context.channel.purge(limit=amount + 1)
         embed = discord.Embed(
             description=f"**{context.user}** cleared **{len(purged_messages)-1}** messages!",
