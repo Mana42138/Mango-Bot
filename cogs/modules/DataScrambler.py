@@ -6,7 +6,6 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 
-# Check if it is a private DM
 async def check_private(context: discord.Interaction):
     try:
         if not context.guild:

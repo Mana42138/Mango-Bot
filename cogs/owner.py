@@ -1,4 +1,5 @@
 
+from asyncio import tasks
 import os
 import json
 from turtle import title
@@ -9,7 +10,7 @@ from .modules.Obfuscation import *
 
 import discord
 from discord import app_commands, file
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ext.commands import Context
 
 def find_python_files(folder_path):
@@ -335,6 +336,21 @@ class Owner(commands.Cog, name="owner"):
         obfuscated_file.close()
 
         os.remove(obfuscated_file.fp.name)
+
+    @app_commands.command(
+        name="aimode",
+        description="Load Ai Data",
+    )
+    @commands.is_owner()
+    async def aimode(self, context: discord.Interaction) -> None:
+        """
+        The bot will disable all commands and gather data from every channel it is in Then train with it.
+
+        :param context: The hybrid command context.
+        """
+        
+        await context.response.send_message("Enabling **AI MODE**")
+        
 
 async def setup(bot):
     await bot.add_cog(Owner(bot))

